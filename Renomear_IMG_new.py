@@ -13,34 +13,21 @@ def num_groups(regex):
 	return re.compile(regex).groups
 
 
-def renameImages(nome, path):
-	r=r'^(IMG_|VID_|IMG-|VID-|Screenshot_|InShot_)(\d{8})(.\w*\d*)?([.]\w*\d*)$'
-	novo_nome = ""
-	success = False
-	print(nome)
-	if re.search(r,nome):
-		if(nome.startswith(("IMG", "VID"))):
-			novo_nome = nome[4:]
-		elif(nome.startswith("Screenshot_")):
-			novo_nome = nome[11:]
-		elif(nome.startswith("InShot_")):
-			novo_nome = nome[7:]		
-		novo_nome = novo_nome[:4] + "-" + novo_nome[4:6] + "-" + novo_nome[6:]
-		if os.path.exists(os.path.join(path,novo_nome)):
-			print("Arquivo com este nome já existe na pasta. Tentando novamente com + (renomeado em dia atual)")
-			novo_nome+=" (renomeado em " + str(datetime.now()) + ")"
-		
-		print("Rename: " + nome + " to " + novo_nome)
-		os.rename(os.path.join(path,nome),os.path.join(path,novo_nome))
-		success = True
-	return success
+def rename_image(name, path):
+	regex="(^((IMG|VID|Screenshot|InShot|PANO)(_|-))(((\d){4})-?((\d){2})-?((\d){2}).(\w*\d*)?)|(^((\d){4})-?((\d){2})-?((\d){2}).(\w*\d*)?))"
+	regex_subs=r"\6\14-\8\16-\10\18_\12\20"
+	new_name = re.sub(regex, regex_subs, name)
+	if ((name!=new_name) and (os.path.exists(os.path.join(path,new_name)))):
+		print("Arquivo com este nome já existe na pasta. Tentando novamente com + (renomeado em dia atual)")
+		new_name = re.sub("(.*)(\.\w*)",r"\1 (renomeado em " + str(datetime.now()) + ")"+ r"\2",new_name)
+		print("Rename: " + name + " to " + new_name)
+	os.rename(os.path.join(path,name),os.path.join(path,new_name))
+	return True
 
-def renameAllImages(imagens, path):
+def rename_all_images(imagens, path):
 	imagens = sorted(os.listdir(path))
 	for nome in imagens:
-		if renameImages(nome, path):
-			renameAllImages(imagens, path)
-			break
+		rename_images(nome, path)
 
 def doDict(imagens):
 	dict = {}
@@ -78,7 +65,7 @@ def createDirsAndMove(dict, directory):
 			print(str(len(dict[key])) + "files moved")
 
 def doRefactory(arquivosPasta, directory):
-	renameAllImages(arquivosPasta, directory)
+	rename_all_images(arquivosPasta, directory)
 	arquivosPasta = sorted(os.listdir(directory))
 	dict = doDict(arquivosPasta)
 	#printDict(dict)
@@ -98,7 +85,7 @@ def getDiffDateMod(regex, arquivosPasta, directory):
 	for nome in arquivosPasta:
 		arquivo = directory+"/"+nome
 		if(os.path.isfile(arquivo)):
-			#nome = renameImages(nome, directory)
+			#nome = rename_images(nome, directory)
 			if(dateImages(regex, nome)):
 				dataArquivo = datetime.fromtimestamp(os.path.getmtime(arquivo)).strftime("%Y-%m-%d")
 				if (nome[:10] != dataArquivo):
@@ -117,7 +104,7 @@ arquivosPasta = sorted(os.listdir('.'))
 
 diffDates = getDiffDateMod(regex, arquivosPasta, directory)
 
-f= open("2013.txt","a+")
+f= open("2018.txt","a+")
 f.write(diffDates)
 f.close() 
 
