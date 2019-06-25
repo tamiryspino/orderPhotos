@@ -3,20 +3,12 @@ import os
 from datetime import datetime
 import re
 
-def groups(regex, s):
-	m = re.search(regex,s)
-	if m:
-		return m.groups()
-	return ('',) * num_groups(regex)
-
-def num_groups(regex):
-	return re.compile(regex).groups
-
-
 def rename_image(name, path):
 	regex="(^((IMG|VID|Screenshot|InShot|PANO)(_|-))(((\d){4})-?((\d){2})-?((\d){2}).(\w*\d*)?)|(^((\d){4})-?((\d){2})-?((\d){2}).(\w*\d*)?))"
 	regex_subs=r"\6\14-\8\16-\10\18_\12\20"
+	print("Name: "+name)
 	new_name = re.sub(regex, regex_subs, name)
+	print("New name: "+new_name)
 	if ((name!=new_name) and (os.path.exists(os.path.join(path,new_name)))):
 		print("Arquivo com este nome já existe na pasta. Tentando novamente com + (renomeado em dia atual)")
 		new_name = re.sub("(.*)(\.\w*)",r"\1 (renomeado em " + str(datetime.now()) + ")"+ r"\2",new_name)
@@ -29,47 +21,31 @@ def rename_all_images(imagens, path):
 	for nome in imagens:
 		rename_images(nome, path)
 
-def doDict(imagens):
-	dict = {}
-	for i in imagens:
-		sep = groups(regex,i)
-		dict.setdefault(sep[0],[]).append(sep[0]+sep[1])
-	if '' in dict:
-		del dict['']
-	return dict
+def do_dict(images):
+	photos = pd.DataFrame(images, columns = ['Name'])
+	photos['Date'] = photos['Name'].str.replace(r'(.{10})(.*)', lambda m: m.group(1))
+	values = photos['Date'].value_counts()
+	return values.to_dict()
 
-def printDict(dict):
-	count=0
-	countFiles=0
-	for key in dict.keys():
-		values=dict[key]
-		if(len(values) > 4):
-			print(key, "=>", len(values), "items: ", values)
-			count = count+1
-			countFiles=countFiles+len(values)
-			print("Quantidade de pastas com mais de 4 arquivos: " + str(count))
-			print("Quantidade total de arquivos inseridos nas pastas: " + str(countFiles))
+def create_dirs_and_move(dictionary, directory):
+    for key in dictionary.keys():
+        new_dir = directory+"/"+key+"/"
+        if dictionary[key]>2 and not directory.startswith(key):
+            if not os.path.exists(new_dir):
+                os.makedirs(new_dir)
+                print("New dir:" + new_dir)
+            for name in photos[photos['Date'] == key]["Name"]:
+                file = directory+"/"+name
+                if (os.path.isfile(file)):
+                    print("File: " + file + " will be moved to: " + new_dir+name)
+                    os.rename(file, new_dir+name)
+            print(str(dictionary[key]) + " files moved.")
 
-def createDirsAndMove(dict, directory):	
-	for key in dict.keys():
-		newDir = directory+"/"+key+"/"
-		if len(dict[key])>4 and not directory.startswith(key):
-			if not os.path.exists(newDir):
-				os.makedirs(newDir)
-				print("New dir:" + newDir)
-			for val in dict[key]:
-				file = directory+"/"+val
-				if (os.path.isfile(file)):
-					print("File: " + file + " will be moved to: " + newDir+val)
-					os.rename(file, newDir+val)	
-			print(str(len(dict[key])) + "files moved")
-
-def doRefactory(arquivosPasta, directory):
+def do_refactory(arquivosPasta, directory):
 	rename_all_images(arquivosPasta, directory)
 	arquivosPasta = sorted(os.listdir(directory))
-	dict = doDict(arquivosPasta)
-	#printDict(dict)
-	#createDirsAndMove(dict, directory)
+	dict = do_dict(arquivosPasta)
+	create_dirs_and_move(dict, directory)
 	#if (arquivosPasta) and not os.path.isdir():
 	#	print " - - - - - Não movidos - - - - - "
 	#	print arquivosPasta
@@ -103,6 +79,9 @@ directory = os.getcwd()
 arquivosPasta = sorted(os.listdir('.'))
 
 diffDates = getDiffDateMod(regex, arquivosPasta, directory)
+
+do_refactory(arquivosPasta,directory)
+
 
 f= open("2018.txt","a+")
 f.write(diffDates)
