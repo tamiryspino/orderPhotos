@@ -6,6 +6,10 @@ from os.path import join
 
 
 def validate_date_prefix(date_prefix, formats, present):
+    '''Returns True if the string date_prefix is a valid date, given the list
+    of formats and if the date is smaller than the given present date.
+    '''
+
     for format in formats:
         try:
             file_date = datetime.strptime(date_prefix, format)
@@ -18,6 +22,11 @@ def validate_date_prefix(date_prefix, formats, present):
 
 
 def match_to_rename(reg, re_subs, re_date, file_name, formats, present):
+    '''Verifies if the file_name matches to a valid date, that could not be
+    greater than the given present dategiven the list of formats of date.
+    Returns the groups of matched regex substitution or None if do not match.
+    '''
+
     if re.match(reg, file_name):
         date_prefix = re.sub(reg, re_date, file_name)
         if validate_date_prefix(date_prefix, formats, present):
@@ -25,7 +34,7 @@ def match_to_rename(reg, re_subs, re_date, file_name, formats, present):
 
 
 def format_name(file_name, present):
-    '''Returns formated name if matches to a date or None
+    '''Returns formated name if matches to a date or None.
 
     Parameters:
         file_name (str): The name of the file to be renamed
@@ -34,7 +43,7 @@ def format_name(file_name, present):
     Returns:
         formatted_name (str): A new str, formatted like '%Y-%m-%d_%H-%M-%S' if
         the initial name contains date and hour or '%Y-%m-%d' if it just
-        constains date or None if does not match
+        constains date or None if does not match.
     '''
 
     # File name can contain prefix (ex: IMG, VID_)
@@ -91,6 +100,10 @@ def preview_rename_all(files):
 
 
 def rename_file(file, final_path, present, old_name, new_name):
+    '''Renames (and moves) the file to the final_path.
+    Only renames if the file begins with prefix+date_hour or prefix+date
+    and if a file with de same name already doesn't exists on destiny.
+    '''
     # Only renames if the file begins with prefix+date_hour or prefix+date
     # and if a file with de same name already doesn't exists on destiny.
     try:
@@ -109,7 +122,8 @@ def rename_file(file, final_path, present, old_name, new_name):
 
 def rename_all(directory, final_path, files):
     '''Renames the files, removing the prefix like "IMG_", "VID-" and
-    format the new date with hyphens.
+    formatting the new date with hyphens. Ex. 2020-10-06_22-10-10.png.
+    Returns the list of modified files new names.
     '''
     files = sorted(files)
     preview_renamed_files, not_renamed_files = preview_rename_all(files)
