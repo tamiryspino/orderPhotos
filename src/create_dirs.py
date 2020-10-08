@@ -1,12 +1,14 @@
 import os
 from datetime import datetime
-import re
 import logging
 import pandas as pd
 from os.path import join, exists, isfile
 
 
 def create_dir(final_path):
+    '''Creates a new directory if it don't already exists.
+    '''
+
     if not exists(final_path):
         os.makedirs(final_path)
         logging.info("Created new dir: " + final_path)
@@ -15,17 +17,29 @@ def create_dir(final_path):
 
 
 def group_by_date(pd_files):
+    '''Group the files on the data frame based on the first 10 characters.
+    '''
+
     return pd_files['Name'].str.replace(r'(.{10})(.*)', lambda m: m.group(1))
 
 
 def do_dict_by_date(images):
+    '''Returns a data frame with keys Name (the name of the file)
+    and Date (the prefix date of the file).
+    '''
+
     photos = pd.DataFrame(images, columns=['Name'])
     photos['Date'] = group_by_date(photos)
-    # TODO Retornar apenas os de quantidade maior que X
+    # TODO Return just groups with more than given qnt_files
     return photos
 
 
 def move_files(files, directory, new_dir, ignored_dir):
+    '''Move the given list of files of the given directory to a new directory,
+    If a file with the same name already exists in the new directory than the
+    file goes to a ignored_dir.
+    '''
+
     success = 0
     ignored_files = 0
     total_not_moved = 0
@@ -39,8 +53,8 @@ def move_files(files, directory, new_dir, ignored_dir):
                     os.rename(path_file, new_path_file)
                     success += 1
                 else:
-                    logging.error("File " + file + " already exists in \
-                                  directory. Moving to ignored directory...")
+                    logging.error("File " + file + " already exists in"
+                                  + " directory. Moving to ignored directory.")
                     create_dir(ignored_dir)
                     os.rename(path_file, join(ignored_dir, file))
                     ignored_files += 1
@@ -75,7 +89,6 @@ def create_dirs_and_move(qnt_files, images, directory):
 
     logging.info(photos['Date'].value_counts().to_string())
 
-    # TODO date_dict = date_dict[''] > qnt_files
     total_moved = 0
     total_not_moved = 0
 
@@ -99,29 +112,3 @@ def create_dirs_and_move(qnt_files, images, directory):
 
     logging.info(str(total_moved) + " files moved to a directory.")
     logging.info(str(total_not_moved) + " files not moved to a directory.")
-
-
-def dateImages(regex, s):
-    return re.search(regex, s)
-
-
-'''
-def getDiffDateMod(regex, arquivosPasta, directory):
-    diffDates = ""	
-    arquivosPasta = do_refactoring(arquivosPasta, directory)
-    for nome in arquivosPasta:
-        arquivo = directory+"/"+nome
-        if(os.path.isfile(arquivo)):
-            #nome = rename_images(nome, directory)
-            if(dateImages(regex, nome)):
-                dataArquivo = datetime.fromtimestamp(os.path.getmtime(arquivo))
-                                      .strftime("%Y-%m-%d")
-                if (nome[:10] != dataArquivo):
-                    diffDates += arquivo+ " --> " + nome[:10]
-                                 + " x " + dataArquivo + "\n"
-        elif os.path.isdir(arquivo):
-            #print("Pasta:" + arquivo)
-            arquivosPastaInterior = sorted(os.listdir(arquivo))
-            diffDates += getDiffDateMod(regex, arquivosPastaInterior, arquivo)
-    return diffDates
-'''
