@@ -67,15 +67,79 @@ def get_coordinates(geotags):
 
 def get_coordinates_from_exif(file):
     exif = get_exif(file)
+    print(file)
     gps_info = get_gps_info(exif)
     geotags = get_geotagging(gps_info)
     return get_coordinates(geotags)
 
 
+def remove_entries(the_dict):
+    # TODO Move this entries to a configuration file
+    entries = ['quarter', 'town', 'suburb', 'city', 'city_district',
+               'municipality', 'county', 'region', 'postcode', 'country',
+               'country_code', 'city_district', 'city_block', 'neighbourhood',
+               'state', 'state_district', 'residential', 'village']
+
+    SKIP_CITIES = [{'country': 'Sverige', 'town': 'Sollentuna'},
+                   {'country': 'Brasil', 'state': 'Alagoas', 'city': 'Maceió'}]
+
+    for city in SKIP_CITIES:
+        if not all(item in the_dict.items() for item in city.items()):
+            for key in city.keys():
+                entries.remove(key)
+
+    for key in entries:
+        if key in the_dict:
+            del the_dict[key]
+
+    return the_dict
+
+
 def reverse_geocoding(coordinates):
     locator = Nominatim(user_agent="myGeocoder")
-    location = locator.reverse(coordinates)
-    return location.raw
+    try:
+        location = locator.reverse(coordinates)
+        address = location.raw['address']
+        return remove_entries(address)
+    except Exception as e:
+        logging.error(e, coordinates)
+
+
+def get_remove_key(key, the_dict):
+    value = ''
+    if key in the_dict.keys():
+        value += the_dict.get(key) + ', '
+        del the_dict[key]
+    return value[:-2], the_dict
+
+
+def format_address(address):
+    # TODO Configure
+    initial_address = ''
+    initial_entries = ['country', 'state', 'city', 'town']
+    for entry in initial_entries:
+        part_address, address = get_remove_key(entry, address)
+        initial_address += part_address
+
+    road = ''
+    final_entries = ['road', 'house_number']
+    for entry in final_entries:
+        part_address, address = get_remove_key(entry, address)
+        road += part_address
+
+    place_name = ''
+    for key, value in address.items():
+        place_name += value + ', '
+
+    final_address = ''
+    if initial_address != '':
+        final_address += initial_address + ' - '
+
+    if place_name != '':
+        final_address += place_name[:-2]
+    else:
+        final_address += road
+    return final_address
 
 
 if __name__ == "__main__":
@@ -97,4 +161,6 @@ if __name__ == "__main__":
             coord = get_coordinates_from_exif(join(directory, image))
             if coord:
                 address = reverse_geocoding(coord)
+                if address:
+                    address = format_address(address)
                 logging.info(address)
