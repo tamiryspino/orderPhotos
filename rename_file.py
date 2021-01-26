@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 import re
 import logging
+from os.path import join
 
 
 def validate_date_prefix(date_prefix, formats, present):
@@ -14,10 +15,10 @@ def validate_date_prefix(date_prefix, formats, present):
             file_date = datetime.strptime(date_prefix, format)
             return file_date.date() < present.date()
         except Exception:
-            logging.error(date_prefix + " is not a valid date to format "
-                          + format)
+            pass
     logging.info(date_prefix + " is not a valid date to format "
                  + "for all formats or its in the future.")
+    return False
 
 
 def match_to_rename(reg, re_subs, re_date, file_name, formats, present):
@@ -77,47 +78,73 @@ def format_name(file_name, present):
     return formatted_name
 
 
-def rename_file(file, final_path, present):
+def preview_rename_file(file, present):
+    old_name = os.path.split(os.path.abspath(file))[1]
+    new_name = format_name(old_name, present)
+    return [old_name, new_name]
+
+
+def preview_rename_all(files):
+    present = datetime.now()
+    new_names = []
+    preview_renamed_files = []
+    will_not_be_renamed = []
+    for name in sorted(files):
+        old_name, new_name = preview_rename_file(name, present)
+        if new_name not in new_names:
+            new_names.append(new_name)
+            preview_renamed_files.append([old_name, new_name])
+        else:
+            will_not_be_renamed.append([old_name, new_name])
+    return preview_renamed_files, will_not_be_renamed
+
+
+def rename_file(file, final_path, present, old_name, new_name):
     '''Renames (and moves) the file to the final_path.
     Only renames if the file begins with prefix+date_hour or prefix+date
     and if a file with de same name already doesn't exists on destiny.
     '''
-
-    file_name = os.path.split(os.path.abspath(file))[1]
-
-    formatted_name = format_name(file_name, present)
-
-    if formatted_name:
-        try:
-            formatted_path_file = os.path.join(final_path, formatted_name)
-            if not (os.path.exists(formatted_path_file)):
-                os.rename(file, formatted_path_file)
-                logging.info("| " + file_name + " | " + formatted_name + " |")
-                return formatted_name
-            else:
-                # TODO Compare metadata of files
-                logging.error("Renamed file " + file_name
-                              + " already exists in destiny directory.\
-                              Nothing to do.")
-        except Exception as e:
-            logging.info("| " + file_name + " | ERROR: " + e + " |")
-            logging.error(e)
+    # Only renames if the file begins with prefix+date_hour or prefix+date
+    # and if a file with de same name already doesn't exists on destiny.
+    try:
+        formatted_path_file = os.path.join(final_path, new_name)
+        if not (os.path.exists(formatted_path_file)):
+            os.rename(file, formatted_path_file)
+            logging.info("| " + old_name + " | " + new_name + " |")
+            return new_name
+        else:
+            # TODO Compare metadata of files
+            logging.error("Renamed file " + old_name + " already exists in destiny directory. Nothing to do.")
+    except Exception as e:
+        logging.info("| " + old_name + " | ERROR: " + str(e) + " |")
+        logging.error(e)
 
 
-def rename_all(path, files):
+def rename_all(directory, final_path, files):
     '''Renames the files, removing the prefix like "IMG_", "VID-" and
     formatting the new date with hyphens. Ex. 2020-10-06_22-10-10.png.
     Returns the list of modified files new names.
     '''
+    files = sorted(files)
+    preview_renamed_files, not_renamed_files = preview_rename_all(files)
+    
+    print('This files will not be renamed:')
+    print(not_renamed_files)
+    
+    print('-------- This files will be renamed --------')
+    print(*preview_renamed_files, sep='\n')
+    answer = input('Do you like to rename this ' + str(len(preview_renamed_files)) + ' files?\
+                    Type N for NO and any other for Yes.')
 
-    logging.info("Renaming all files...")
-    logging.info("|     Name     |      New Name     |")
-    renamed_files = []
+    if answer != 'N':
+        logging.info("Renaming all files...")
+        logging.info("|     Name     |      New Name     |")
+        renamed_files = []
 
-    present = datetime.now()
-    for name in sorted(files):
-        new_name = rename_file(name, path, present)
-        if new_name:
-            renamed_files.append(new_name)
+        present = datetime.now()
+        for old_name, new_name in preview_renamed_files:
+            renamed = rename_file(join(directory, old_name), final_path, present, old_name, new_name)
+            if renamed:
+                renamed_files.append(renamed)
 
-    return renamed_files
+        return renamed_files
