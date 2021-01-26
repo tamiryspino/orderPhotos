@@ -49,3 +49,7 @@ if __name__ == "__main__":
         do_refactoring(final_directory, videos, qnt_files)
 
     logging.info('Finished')
+
+# TODO	
+# 6 - Perguntar quantidade de arquivos para poder agrupar em pasta	
+# 7 - Comparar metadados
