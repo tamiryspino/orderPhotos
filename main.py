@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 import logging
 from os.path import isfile, join
-from rename_file import rename_all
+from rename_file import rename_all, preview_rename_all
 from create_dirs import create_dir, create_dirs_and_move
 
 
@@ -33,9 +33,9 @@ def search_videos(directory):
     return search('videos', valid_videos_ext, directory)
 
 
-def do_refactoring(final_directory, files):
+def do_refactoring(directory, final_directory, files):
     logging.info('Renaming and moving files...')
-    renamed_files = rename_all(final_directory, files)
+    renamed_files = rename_all(directory, final_directory, files)
 
     if renamed_files:
         files = sorted(renamed_files)
@@ -48,8 +48,7 @@ if __name__ == "__main__":
     final_directory = input("Type a directory to send the results.\
                             Ex.: /home/seuNome/Images/Organized\n")
 
-    logging.basicConfig(filename=join(directory, str(datetime.now())
-                                      + '_order_photos.md'),
+    logging.basicConfig(filename=join(directory, datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + '_order_photos.md'),
                         format='%(asctime)s %(message)s',
                         datefmt='%m/%d/%Y %I:%M:%S %p',
                         level=logging.DEBUG)
@@ -60,11 +59,11 @@ if __name__ == "__main__":
 
     images = search_images(directory)
     if images:
-        do_refactoring(final_directory, images)
+        do_refactoring(directory, final_directory, images)
 
     videos = search_videos(directory)
     if videos:
-        do_refactoring(final_directory, videos)
+        do_refactoring(directory, final_directory, videos)
 
     logging.info('Finished')
 
