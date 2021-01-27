@@ -38,9 +38,9 @@ def get_geotagging(gps_info):
 
 
 def get_decimal_from_dms(dms, ref):
-    degrees = dms[0][0] / dms[0][1]
-    minutes = dms[1][0] / dms[1][1] / 60.0
-    seconds = dms[2][0] / dms[2][1] / 3600.0
+    degrees = dms[0]
+    minutes = dms[1] / 60.0
+    seconds = dms[2] / 3600.0
 
     if ref in ['S', 'W']:
         degrees = -degrees
@@ -74,7 +74,7 @@ def get_coordinates_from_exif(file):
 
 def reverse_geocoding(coordinates):
     locator = Nominatim(user_agent="myGeocoder")
-    location = locator.reverse(coordinates)
+    location = locator.reverse(coordinates, timeout=None)
     return location.raw
 
 
@@ -84,8 +84,8 @@ if __name__ == "__main__":
     if not directory:
         directory = "/home/xxxx/Imagens/Camera"
 
-    logging.basicConfig(filename=join(directory, str(datetime.now())
-                                      + '_geocoding.csv'),
+
+    logging.basicConfig(filename=join(directory, datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + '_geocoding.csv'),
                         format='%(message)s',
                         datefmt='%m/%d/%Y %I:%M:%S %p',
                         level=logging.INFO)
