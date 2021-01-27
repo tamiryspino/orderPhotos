@@ -38,9 +38,9 @@ def get_geotagging(gps_info):
 
 
 def get_decimal_from_dms(dms, ref):
-    degrees = dms[0]
-    minutes = dms[1] / 60.0
-    seconds = dms[2] / 3600.0
+    degrees = dms[0][0] / dms[0][1]
+    minutes = dms[1][0] / dms[1][1] / 60.0
+    seconds = dms[2][0] / dms[2][1] / 3600.0
 
     if ref in ['S', 'W']:
         degrees = -degrees
@@ -74,22 +74,68 @@ def get_coordinates_from_exif(file):
 
 def reverse_geocoding(coordinates):
     locator = Nominatim(user_agent="myGeocoder")
-    location = locator.reverse(coordinates, timeout=None)
-    return location.raw
+    try:
+        location = locator.reverse(coordinates, timeout=None, language='en')
+        address = location.raw['address']
+        return address
+    except Exception as e:
+        logging.error(e, coordinates)
+
+
+def get_remove_key(key, the_dict):
+    value = ''
+    if key in the_dict.keys():
+        value += the_dict.get(key) + ', '
+        del the_dict[key]
+    return value[:-2], the_dict
+
+
+def remove_words(final_name):
+    return final_name.replace(' kommun', '').replace(' County', '')
+
+
+def format_address(address):
+    # TODO Configure
+    initial_address = ''
+    initial_entries = [['country'],
+                       ['county', 'state'],
+                       ['city', 'town', 'city_district', 'municipality']]
+
+    keys = address.keys()
+    for entry in initial_entries:
+        for division in entry:
+            if division in keys:
+                initial_address += address[division] + ', '
+                break
+
+    secondary_entries = ['amenity', 'historic', 'tourism', 'highway',
+                         'railway', 'shop', 'office', 'village', 'hamlet',
+                         'building', 'leisure', 'farm', 'road']
+
+    place_name = ''
+    for entry in secondary_entries:
+        if entry in keys:
+            place_name += address[entry]
+            break
+
+    return remove_words(initial_address + place_name)
 
 
 if __name__ == "__main__":
-    directory = input("Type the path to be evaluated. Ex.: /home/"
-                      + "yourName/Images/Camera\n")
+    directory = input("Type the path to be evaluated. Ex.: "
+                      + "/home/user/Camera\n")
     if not directory:
-        directory = "/home/xxxx/Imagens/Camera"
+        directory = "/home/xxxx/Images/Camera"
 
-
-    logging.basicConfig(filename=join(directory, datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + '_geocoding.csv'),
+    logging.basicConfig(filename=join(directory,
+                                      datetime.now().
+                                      strftime("%Y-%m-%d_%H-%M-%S")
+                                      + '_geocoding.csv'),
                         format='%(message)s',
                         datefmt='%m/%d/%Y %I:%M:%S %p',
                         level=logging.INFO)
 
+    # TODO only images?
     images = search_images(directory)
     if images:
         for image in sorted(images):
@@ -97,4 +143,6 @@ if __name__ == "__main__":
             coord = get_coordinates_from_exif(join(directory, image))
             if coord:
                 address = reverse_geocoding(coord)
+                if address:
+                    address = format_address(address)
                 logging.info(address)
