@@ -77,7 +77,7 @@ def remove_entries(the_dict):
     # TODO Move this entries to a configuration file
     entries = ['quarter', 'town', 'suburb', 'city', 'city_district',
                'municipality', 'county', 'region', 'postcode', 'country',
-               'country_code', 'city_district', 'city_block', 'neighbourhood',
+               'country_code', 'city_district', 'city_block', 'neighborhood',
                'state', 'state_district', 'residential', 'village']
 
     SKIP_CITIES = [{'country': 'Sverige', 'town': 'Sollentuna'},
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     directory = input("Type the path to be evaluated. Ex.: /home/"
                       + "yourName/Images/Camera\n")
     if not directory:
-        directory = "/home/xxxx/Imagens/Camera"
+        directory = "/home/xxxx/Images/Camera"
 
     logging.basicConfig(filename=join(directory, str(datetime.now())
                                       + '_geocoding.csv'),
