@@ -1,3 +1,5 @@
+from rename_file import validate_date_prefix
+from geocoding import get_file_address, get_multiple_addresses
 import os
 from datetime import datetime
 import logging
@@ -9,6 +11,7 @@ def create_dir(final_path):
     '''Creates a new directory if it don't already exists.
     '''
 
+    # TODO Verify if a folder with same prefix already exists
     if not exists(final_path):
         os.makedirs(final_path)
         logging.info("Created new dir: " + final_path)
@@ -16,11 +19,14 @@ def create_dir(final_path):
         logging.info("Directory " + final_path + " already exists!")
 
 
-def group_by_date(pd_files):
-    '''Group the files on the data frame based on the first 10 characters.
-    '''
-
-    return pd_files['Name'].str.replace(r'(.{10})(.*)', lambda m: m.group(1))
+def first_ten_char(name):
+    formats = ['%Y-%m-%d_%H-%M-%S',
+               '%Y-%m-%d-%H-%M-%S',
+               '%Y-%m-%d %H-%M-%S',
+               '%Y-%m-%d']
+    present = datetime.now()
+    if validate_date_prefix(name[:10], formats, present):
+        return name[:10]
 
 
 def do_dict_by_date(images):
@@ -29,7 +35,7 @@ def do_dict_by_date(images):
     '''
 
     photos = pd.DataFrame(images, columns=['Name'])
-    photos['Date'] = group_by_date(photos)
+    photos['Date'] = photos['Name'].apply(first_ten_char)
     # TODO Return just groups with more than given qnt_files
     return photos
 
@@ -84,9 +90,12 @@ def create_dirs_and_move(qnt_files, images, directory):
 
     logging.info("Creating dict by date...")
     photos = do_dict_by_date(images)
-    photos['Date'] = group_by_date(photos)
     date_dict = photos['Date'].value_counts().to_dict()
+    photos['Address'] = photos['Name'].apply(get_file_address,
+                                             directory=directory)
 
+    photos.to_csv(join(directory, datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                  + '_photo_summary.csv'))
     logging.info(photos['Date'].value_counts().to_string())
 
     total_moved = 0
@@ -95,11 +104,15 @@ def create_dirs_and_move(qnt_files, images, directory):
     logging.info("Moving files to a specific directory by file prefix...")
     ignored_dir = join(directory, str(datetime.now()) + " Ignored")
     for key in date_dict:
-        new_dir = join(directory, key)
-
         if date_dict[key] >= qnt_files:
-            create_dir(new_dir)
             files = photos.loc[photos['Date'] == key]
+            places = files['Address'].value_counts()
+            if not places.empty:
+                max_occurrence_place = places.idxmax()
+                new_dir = join(directory, key + ' - ' + max_occurrence_place)
+            else:
+                new_dir = join(directory, key)
+            create_dir(new_dir)
 
             success = move_files(files['Name'],
                                  directory,

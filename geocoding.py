@@ -8,28 +8,37 @@ import logging
 
 
 def get_exif(filename):
-    image = Image.open(filename)
-    image.verify()
-    return image._getexif()
+    try:
+        image = Image.open(filename)
+        image.verify()
+        return image._getexif()
+    except Exception as e:
+        logging.error(e)
 
 
 def get_labeled_exif(exif):
-    labeled = {}
-    for (key, val) in exif.items():
-        labeled[TAGS.get(key)] = val
-
-    return labeled
+    try:
+        labeled = {}
+        for (key, val) in exif.items():
+            labeled[TAGS.get(key)] = val
+        return labeled
+    except Exception as e:
+        logging.error(e)
 
 
 def get_gps_info(exif):
-    return get_labeled_exif(exif)['GPSInfo']
+    try:
+        return get_labeled_exif(exif)['GPSInfo']
+    except Exception as e:
+        logging.error(e)
 
 
 def get_geotagging(gps_info):
-    if not gps_info:
-        raise ValueError("No EXIF geotagging found.")
-
     geotagging = {}
+    if not gps_info:
+        logging.error("No EXIF geotagging found.")
+        return geotagging
+
     for (key, val) in GPSTAGS.items():
         if key in gps_info:
             geotagging[val] = gps_info[key]
@@ -66,10 +75,12 @@ def get_coordinates(geotags):
 
 
 def get_coordinates_from_exif(file):
+    logging.info('Analising ' + file)
     exif = get_exif(file)
-    gps_info = get_gps_info(exif)
-    geotags = get_geotagging(gps_info)
-    return get_coordinates(geotags)
+    if exif:
+        gps_info = get_gps_info(exif)
+        geotags = get_geotagging(gps_info)
+        return get_coordinates(geotags)
 
 
 def reverse_geocoding(coordinates):
@@ -108,6 +119,7 @@ def format_address(address):
                 initial_address += address[division] + ', '
                 break
 
+    initial_address = remove_words(initial_address)
     secondary_entries = ['amenity', 'historic', 'tourism', 'highway',
                          'railway', 'shop', 'office', 'village', 'hamlet',
                          'building', 'leisure', 'farm', 'road']
@@ -118,7 +130,31 @@ def format_address(address):
             place_name += address[entry]
             break
 
-    return remove_words(initial_address + place_name)
+    if place_name != '':
+        return initial_address + place_name
+    return rreplace(initial_address, ', ', '', 1)
+
+
+def rreplace(s, old, new, occurrence):
+    li = s.rsplit(old, occurrence)
+    return new.join(li)
+
+
+def get_file_address(file, directory):
+    coord = get_coordinates_from_exif(join(directory, file))
+    if coord:
+        address = reverse_geocoding(coord)
+        if address:
+            address = format_address(address)
+        return address
+
+
+def get_multiple_addresses(directory, files):
+    addresses = {}
+    for file in sorted(files):
+        file_address = get_file_address(directory, file)
+        addresses[file_address] = addresses.get(file_address, 0) + 1
+    return sorted(addresses.items(), key=lambda item: item[1], reverse=True)
 
 
 if __name__ == "__main__":
@@ -138,11 +174,4 @@ if __name__ == "__main__":
     # TODO only images?
     images = search_images(directory)
     if images:
-        for image in sorted(images):
-            # logging.info(image + ",")
-            coord = get_coordinates_from_exif(join(directory, image))
-            if coord:
-                address = reverse_geocoding(coord)
-                if address:
-                    address = format_address(address)
-                logging.info(address)
+        get_multiple_addresses(directory, images)

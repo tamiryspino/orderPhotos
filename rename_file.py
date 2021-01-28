@@ -90,12 +90,15 @@ def preview_rename_all(files):
     preview_renamed_files = []
     will_not_be_renamed = []
     for name in sorted(files):
-        old_name, new_name = preview_rename_file(name, present)
-        if new_name not in new_names:
-            new_names.append(new_name)
-            preview_renamed_files.append([old_name, new_name])
-        else:
-            will_not_be_renamed.append([old_name, new_name])
+        names = preview_rename_file(name, present)
+        if names:
+            old_name = names[0]
+            new_name = names[1]
+            if new_name not in new_names:
+                new_names.append(new_name)
+                preview_renamed_files.append([old_name, new_name])
+            else:
+                will_not_be_renamed.append([old_name, new_name])
     return preview_renamed_files, will_not_be_renamed
 
 
@@ -108,13 +111,15 @@ def rename_file(file, final_path, present, old_name, new_name):
     # and if a file with de same name already doesn't exists on destiny.
     try:
         formatted_path_file = os.path.join(final_path, new_name)
-        if not (os.path.exists(formatted_path_file)):
+        if (not (os.path.exists(formatted_path_file))
+           and file != formatted_path_file):
             os.rename(file, formatted_path_file)
             logging.info("| " + old_name + " | " + new_name + " |")
             return new_name
         else:
             # TODO Compare metadata of files
-            logging.error("Renamed file " + old_name + " already exists in destiny directory. Nothing to do.")
+            logging.error("Renamed file " + old_name + " already exists \
+                          in destiny directory. Nothing to do.")
     except Exception as e:
         logging.info("| " + old_name + " | ERROR: " + str(e) + " |")
         logging.error(e)
@@ -127,24 +132,28 @@ def rename_all(directory, final_path, files):
     '''
     files = sorted(files)
     preview_renamed_files, not_renamed_files = preview_rename_all(files)
-    
+
     print('This files will not be renamed:')
     print(not_renamed_files)
-    
+
     print('-------- This files will be renamed --------')
     print(*preview_renamed_files, sep='\n')
-    answer = input('Do you like to rename this ' + str(len(preview_renamed_files)) + ' files?\
-                    Type N for NO and any other for Yes.')
 
-    if answer != 'N':
-        logging.info("Renaming all files...")
-        logging.info("|     Name     |      New Name     |")
-        renamed_files = []
+    if len(preview_renamed_files) > 0:
+        answer = input('Do you like to rename this '
+                       + str(len(preview_renamed_files)) + ' files?\
+                        Type N for NO and any other for Yes.')
 
-        present = datetime.now()
-        for old_name, new_name in preview_renamed_files:
-            renamed = rename_file(join(directory, old_name), final_path, present, old_name, new_name)
-            if renamed:
-                renamed_files.append(renamed)
+        if answer != 'N':
+            logging.info("Renaming all files...")
+            logging.info("|     Name     |      New Name     |")
+            renamed_files = []
 
-        return renamed_files
+            present = datetime.now()
+            for old_name, new_name in preview_renamed_files:
+                renamed = rename_file(join(directory, old_name),
+                                      final_path, present, old_name, new_name)
+                if renamed:
+                    renamed_files.append(renamed)
+
+            return renamed_files
