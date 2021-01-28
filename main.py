@@ -32,10 +32,10 @@ def do_refactoring(directory, final_directory, files, qnt_files):
 if __name__ == "__main__":
     directory = input("Type a directory to be evaluated."
                       + " Ex.: /home/seuNome/Images\n")
-    
+
     final_directory = input("Type a directory to send the results."
                             + " Ex.: /home/seuNome/Images/Organized\n")
-    
+
     qnt_files = input("How many files must exist with the same prefix"
                       + " to group in a directory?\n")
     if not qnt_files:

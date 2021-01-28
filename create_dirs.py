@@ -1,22 +1,43 @@
 from rename_file import validate_date_prefix
-from geocoding import get_file_address, get_multiple_addresses
+from geocoding import get_file_address
 import os
 from datetime import datetime
 import logging
 import pandas as pd
-from os.path import join, exists, isfile
+from os.path import join, exists, isfile, isdir
+
+
+def verify_folder_same_prefix(final_path):
+    split = os.path.split(os.path.abspath(final_path))
+    parent_folder = split[0]
+    folder = split[1]
+    for f in os.listdir(parent_folder):
+        if f.startswith(folder) and isdir(join(parent_folder, f)):
+            final_path = join(parent_folder, f)
+            return final_path
+
+
+def create_dated_dir(final_path):
+    same_prefix = verify_folder_same_prefix(final_path)
+
+    if not same_prefix:
+        return create_dir(final_path)
+    else:
+        logging.info("Directory " + final_path + " not created because\
+            a folder with same prefix already exists: " + same_prefix)
+        return same_prefix
 
 
 def create_dir(final_path):
     '''Creates a new directory if it don't already exists.
     '''
 
-    # TODO Verify if a folder with same prefix already exists
     if not exists(final_path):
         os.makedirs(final_path)
         logging.info("Created new dir: " + final_path)
     else:
         logging.info("Directory " + final_path + " already exists!")
+    return final_path
 
 
 def first_ten_char(name):
@@ -112,7 +133,7 @@ def create_dirs_and_move(qnt_files, images, directory):
                 new_dir = join(directory, key + ' - ' + max_occurrence_place)
             else:
                 new_dir = join(directory, key)
-            create_dir(new_dir)
+            new_dir = create_dated_dir(new_dir)
 
             success = move_files(files['Name'],
                                  directory,
