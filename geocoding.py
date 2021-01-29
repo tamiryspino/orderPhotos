@@ -5,6 +5,7 @@ from search_files import search_images
 from os.path import join
 from datetime import datetime
 import logging
+import json
 
 
 def get_exif(filename):
@@ -105,8 +106,15 @@ def remove_words(final_name):
     return final_name.replace(' kommun', '').replace(' County', '')
 
 
+def replace_place_name(place_name):
+    with open('geocoding_config.json', encoding='utf-8') as f:
+        config = json.load(f)
+        for place in config['common_places']:
+            if place == place_name:
+                return config['common_places'][place_name]
+    return place_name
+
 def format_address(address):
-    # TODO Configure
     initial_address = ''
     initial_entries = [['country'],
                        ['county', 'state'],
@@ -122,7 +130,7 @@ def format_address(address):
     initial_address = remove_words(initial_address)
     secondary_entries = ['amenity', 'historic', 'tourism', 'highway',
                          'railway', 'shop', 'office', 'village', 'hamlet',
-                         'building', 'leisure', 'farm', 'road']
+                         'building', 'leisure', 'farm']
 
     place_name = ''
     for entry in secondary_entries:
@@ -130,8 +138,15 @@ def format_address(address):
             place_name += address[entry]
             break
 
+    if place_name == '':
+        if 'road' in keys:
+            place_name += address['road']
+            if 'house_number' in keys:
+                place_name += ' ' + address['house_number']
+
     if place_name != '':
-        return initial_address + place_name
+        final_name = initial_address + place_name
+        return final_name
     return rreplace(initial_address, ', ', '', 1)
 
 
@@ -142,17 +157,21 @@ def rreplace(s, old, new, occurrence):
 
 def get_file_address(file, directory):
     coord = get_coordinates_from_exif(join(directory, file))
+    logging.info(coord)
     if coord:
         address = reverse_geocoding(coord)
+        logging.info(address)
         if address:
             address = format_address(address)
+            logging.info(address)
+            address = replace_place_name(address)
         return address
 
 
 def get_multiple_addresses(directory, files):
     addresses = {}
     for file in sorted(files):
-        file_address = get_file_address(directory, file)
+        file_address = get_file_address(file, directory)
         addresses[file_address] = addresses.get(file_address, 0) + 1
     return sorted(addresses.items(), key=lambda item: item[1], reverse=True)
 

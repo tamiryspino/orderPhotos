@@ -130,6 +130,8 @@ def create_dirs_and_move(qnt_files, images, directory):
             places = files['Address'].value_counts()
             if not places.empty:
                 max_occurrence_place = places.idxmax()
+                if len(places) > 1:
+                    max_occurrence_place += " and others"
                 new_dir = join(directory, key + ' - ' + max_occurrence_place)
             else:
                 new_dir = join(directory, key)
